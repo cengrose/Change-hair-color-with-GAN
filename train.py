@@ -23,12 +23,9 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import torch
 
-
 import time
 import datetime
 import sys
-
-
 
 import numpy as np
 import itertools
@@ -128,7 +125,7 @@ netD_A = Discriminator(input_nc)
 netD_B = Discriminator(output_nc)
 
 if cuda:
-    cuda
+    
     netG_A2B.cuda()
     netG_B2A.cuda()
     netD_A.cuda()
@@ -176,6 +173,11 @@ dataloader = DataLoader(ImageDataset(dataroot, transforms_=transforms_, unaligne
 # Loss plot
 logger = Logger(n_epochs, len(dataloader))
 ###################################
+G_loss=[]
+G_identity_loss=[]
+G_gan_loss=[]
+G_cycle_loss=[]
+D_loss=[]
 
 ###### Training ######
 pbar=tqdm(range(epoch,n_epochs))
@@ -258,10 +260,14 @@ for epoch in pbar:
         ###################################
 
         # Progress report (http://localhost:8097)
-        logger.log({'loss_G': loss_G, 'loss_G_identity': (loss_identity_A + loss_identity_B), 'loss_G_GAN': (loss_GAN_A2B + loss_GAN_B2A),
+        pbar.set_postfix({'loss_G': loss_G, 'loss_G_identity': (loss_identity_A + loss_identity_B), 'loss_G_GAN': (loss_GAN_A2B + loss_GAN_B2A),
                     'loss_G_cycle': (loss_cycle_ABA + loss_cycle_BAB), 'loss_D': (loss_D_A + loss_D_B)}, 
                     images={'real_A': real_A, 'real_B': real_B, 'fake_A': fake_A, 'fake_B': fake_B})
-
+        G_loss.append(loss_G.item())
+        G_identity_loss.append(loss_identity_A.item()+loss_identity_B.item())
+        G_gan_loss.append(loss_cycle_ABA.item()+loss_cycle_BAB.item())
+        D_loss.append(loss_D_A.item()+loss_D_B.item())
+        
     # Update learning rates
     lr_scheduler_G.step()
     lr_scheduler_D_A.step()
@@ -274,4 +280,17 @@ for epoch in pbar:
     torch.save(netD_B.state_dict(), 'output/netD_B.pth')
 ###################################
 
+plt.figure(figsize=(10,5))
+plt.title("Generator and Discriminator Losses During Training")
+plt.plot(G_loss,label="G")
+plt.plot(G_identity_loss,label="G_identity")
+plt.plot(G_gan_loss,label="G_GAN")
+plt.plot(G_cycle_loss,label="G_cycle")
+plt.plot(D_loss,label="D")
+plt.xlabel("iteration")
+plt.ylabel("Loss")
+plt.legend()
+plt.show()
 
+         
+           
